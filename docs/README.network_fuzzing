@@ -5,7 +5,7 @@ Both client and server (daemon) programs that communicate using an
 IP network (IPv4 or IPv6) can be fuzzed using the command line
 
 $ ./afl-fuzz -i testcase_dir -o findings_dir [-D delay_before_write] \
-             [-t timeout_delay] [-L] -N network_specification /path/to/program \
+             [-t timeout_delay] [-K] -N network_specification /path/to/program \
 	     [...params...]
 
 where the network_specification has a form similar to a URL:
@@ -13,14 +13,14 @@ where the network_specification has a form similar to a URL:
     [tcp|udp]://hostspec:port
 
 Afl-fuzz has two network fuzzing modes, where it acts as a client to a
-network server that expects input via a socket (no -L option), and where it
+network server that expects input via a socket (no -K option), and where it
 acts as a server to a network client that sends data to afl-fuzz before
-receiving input (using the -L option).  In the first case, afl-fuzz sends data
+receiving input (using the -K option).  In the first case, afl-fuzz sends data
 to the port specified by the URL.  In the second case, afl-fuzz receives data
 on that port and sends a (fuzzed) response to the port the target (client) used
 to send its data.
 
-Note that when afl-fuzz acts as a server (the -L option), there is no control
+Note that when afl-fuzz acts as a server (the -K option), there is no control
 over how the target client manages its use of sockets - and in particular, a
 client that uses ephemeral sockets (the usual case) will rapidly consume the
 network stack's pool of available sockets.  Some operating systems are able to
