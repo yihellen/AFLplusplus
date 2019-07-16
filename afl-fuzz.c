@@ -337,7 +337,7 @@ static u32 N_myaddr_valid = 0;        /* use established conn or addr     */
 static s32 N_fd;                      /* for network file descriptor      */
 
 static u32 N_timeout_given = 0;       /* use delay before network I/O     */
-static u32 N_exec_tmout = 0;          /* network I/O delay in msec        */
+static u32 N_exec_tmout = 1;          /* network I/O delay in msec        */
 static struct timespec N_it;          /* structure for nanosleep() call   */
 
 
@@ -3256,7 +3256,7 @@ static u8 run_target(char** argv, u32 timeout) {
     } else {
       /* Network output to target process - no delay.  This usual won't work. */
       if ((N_fuzz_client?network_listen():network_send()) == -1) {
-	FATAL("Network: failed to connect or send; specify a network delay time");
+	FATAL("Network: failed to connect or send; specify a network delay time with -D");
       }
     }
   }
@@ -11827,7 +11827,7 @@ static void usage(u8* argv0) {
        "                  port = port number or service name to connect to\n"
        "                  If -K is not defined, afl fuzzes a server\n"
        "  -D msec       - delay in msec for network reads/writes\n"
-       "  -K            - specifies that a client is being fuzzed, so afl"
+       "  -K            - specifies that a client is being fuzzed, so afl\n"
        "                  pretents to be a server. port = listening port\n\n"
  
        "Fuzzing behavior settings:\n"
