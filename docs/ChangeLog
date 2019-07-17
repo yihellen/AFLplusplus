@@ -17,10 +17,11 @@ sending a mail to <afl-users+subscribe@googlegroups.com>.
 Version ++2.52d (tbd):
 -----------------------------
 
+  - tcp/udp network fuzzing (from https://github.com/skeetmtp/afl)
+  - test-instr now supports tcp daemon mode (specify port as first option)
   - Using the old ineffective afl-gcc will now show a deprecation warning
   - if llvm_mode was compiled, afl-clang/afl-clang++ will point to these
     instead of afl-gcc
-  - tcp/udp network fuzzing (from https://github.com/skeetmtp/afl)
   - added gcc_plugin which is like llvm_mode but for gcc. This version
     supports gcc version 5 to 8. See gcc_plugin/README.gcc
     (https://github.com/T12z/afl)

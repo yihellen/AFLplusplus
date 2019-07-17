@@ -1,3 +1,21 @@
+
+# DEPRECATED BRANCH
+
+Note that this branch is deprecated.
+The network code works fine, and the documenation is correct.
+
+*BUT* the performance ins very, very bad.
+If you use libdesock_dup.so from the preeny project, you get 10x the speed.
+
+Hence the code is not incorporated in the master.
+
+However as people with special use cases might need this or be interested in
+it this branch is kept.
+
+
+## old README follows
+
+
 ============================
 american fuzzy lop plus plus
 ============================
