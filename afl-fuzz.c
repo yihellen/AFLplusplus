@@ -61,11 +61,17 @@
 #include <netdb.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
+#ifdef __linux__
 #include <sys/sendfile.h>
+#endif /* __linux__ */
 
 
 #if defined(__APPLE__) || defined(__FreeBSD__) || defined (__OpenBSD__)
 #  include <sys/sysctl.h>
+#  include <sys/types.h>
+#  include <sys/socket.h>
+#  include <sys/uio.h>
+#  include <netinet/in.h>
 #endif /* __APPLE__ || __FreeBSD__ || __OpenBSD__ */
 
 /* For systems that have sched_setaffinity; right now just Linux, but one
@@ -2510,7 +2516,11 @@ int network_listen(void) {
     /* seek to the beginning of the file */
     lseek(fd, 0, SEEK_SET);
     /* use sendfile() to transfer the data if possible because it is efficient */
+#ifdef __linux__
     if (sendfile(client_fd, fd, NULL, statbuf.st_size) == -1) {
+#else
+    if (sendfile(client_fd, fd, 0, statbuf.st_size, NULL, NULL, 0) == -1) {
+#endif
       /* if sendfile() didn't work, use read() and write() via a buffer */
       lseek(fd, 0, SEEK_SET); /* reset to the beginning of the file */
       u8 tempbuf[512];
@@ -2687,7 +2697,11 @@ int network_send(void) {
         /* seek to the beginning of the file */
         lseek(fd, 0, SEEK_SET);
         /* use sendfile() to transfer the data if possible because it is efficient */
+#ifdef __linux__
         if (sendfile(N_fd, fd, NULL, statbuf.st_size) == -1) {
+#else
+        if (sendfile(N_fd, fd, 0, statbuf.st_size, NULL, NULL, 0) == -1) {
+#endif
           /* if sendfile() didn't work, use read() and write() via a buffer */
           lseek(fd, 0, SEEK_SET); /* reset to the beginning of the file */
           /* create a temporary buffer to hold all of the data in the file */
