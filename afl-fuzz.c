@@ -66,13 +66,17 @@
 #endif /* __linux__ */
 
 
-#if defined(__APPLE__) || defined(__FreeBSD__) || defined (__OpenBSD__)
+#if defined(__APPLE__) || defined(__FreeBSD__) || defined (__OpenBSD__) || defined (__NetBSD__)
 #  include <sys/sysctl.h>
+#if defined (__OpenBSD__) || defined (__NetBSD__)
+#error no sendfile available, abort
+#else
 #  include <sys/types.h>
 #  include <sys/socket.h>
 #  include <sys/uio.h>
 #  include <netinet/in.h>
-#endif /* __APPLE__ || __FreeBSD__ || __OpenBSD__ */
+#endif /* __APPLE__ || __FreeBSD__ */
+#endif /* __APPLE__ || __FreeBSD__ || __OpenBSD__ || __NetBSD__ */
 
 /* For systems that have sched_setaffinity; right now just Linux, but one
    can hope... */
