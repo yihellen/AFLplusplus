@@ -127,6 +127,7 @@ struct queue_entry {
   u64 exec_us,                          /* Execution time (us)              */
       handicap,                         /* Number of queue cycles behind    */
       n_fuzz,                          /* Number of fuzz, does not overflow */
+      fast_path_val,                    /* all added IP of a fath path      */
       depth;                            /* Path depth                       */
 
   u8* trace_mini;                       /* Trace bytes, if kept             */
@@ -292,6 +293,7 @@ enum {
 };
 
 extern char* power_names[POWER_SCHEDULES_NUM];
+extern char* fast_path_binary;          /* Binary for -P option             */
 
 extern u8 schedule;                     /* Power schedule (default: EXPLORE)*/
 extern u8 havoc_max_mult;

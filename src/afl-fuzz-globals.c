@@ -92,6 +92,7 @@ u8 cal_cycles = CAL_CYCLES,             /* Calibration cycles defaults      */
 
 u32 stats_update_freq = 1;              /* Stats update frequency (execs)   */
 
+char *fast_path_binary;                 /* Binary for -P option             */
 char *power_names[POWER_SCHEDULES_NUM] = {"explore", "fast", "coe",
                                           "lin",     "quad", "exploit"};
 

@@ -92,6 +92,8 @@ static void usage(u8* argv0) {
       "  -o dir        - output directory for fuzzer findings\n\n"
 
       "Execution control settings:\n"
+      "  -P program    - fastpath mode target binary, see "
+      "llvm_mode/README.fastpath\n"
       "  -p schedule   - power schedules recompute a seed's performance "
       "score.\n"
       "                  <explore (default), fast, coe, lin, quad, or "
@@ -144,7 +146,8 @@ static void usage(u8* argv0) {
       argv0, EXEC_TIMEOUT, MEM_LIMIT);
 
 #ifdef USE_PYTHON
-  SAYF("Compiled with Python %s module support, see docs/python_mutators.txt\n", (char*)PYTHON_VERSION);
+  SAYF("Compiled with Python %s module support, see docs/python_mutators.txt\n",
+       (char*)PYTHON_VERSION);
 #endif
 
   SAYF("For additional help please consult %s/README.md\n\n", doc_path);
@@ -192,9 +195,11 @@ int main(int argc, char** argv) {
   init_seed = tv.tv_sec ^ tv.tv_usec ^ getpid();
 
   while ((opt = getopt(argc, argv,
-                       "+i:I:o:f:m:t:T:dnCB:S:M:x:QNUWe:p:s:V:E:L:hR")) > 0)
+                       "+i:I:o:f:m:t:T:dnCB:S:M:x:QNUWe:p:s:V:E:L:hRP:")) > 0)
 
     switch (opt) {
+
+      case 'P': fast_path_binary = optarg; break;
 
       case 'I': infoexec = optarg; break;
 
