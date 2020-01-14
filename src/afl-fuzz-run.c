@@ -206,17 +206,26 @@ u8 run_target(char** argv, u32 timeout) {
          very normally and do not have to be treated as volatile. */
 
       fast_path_val = *(u64*)trace_bits;
-      
+
       u64 h = fast_path_val;
       h = (h >> 4) ^ (h << 8);
-      h &= MAP_SIZE -1;
-      
-      struct queue_entry* q = fast_path_map[h];
+      h &= MAP_SIZE - 1;
+
+      struct fast_queue_entry* q = fast_path_map[h];
       while (q != NULL) {
 
         if (q->fast_path_val == fast_path_val) { return FAULT_NONE; }
 
         q = q->fast_path_next;
+
+      }
+
+      if (q == NULL) {  // add to fast_path queue
+
+        q = ck_alloc(sizeof(struct fast_queue_entry));
+        q->fast_path_val = fast_path_val;
+        q->fast_path_next = fast_path_map[h];
+        fast_path_map[h] = q;
 
       }
 
@@ -548,8 +557,6 @@ u8 calibrate_case(char** argv, struct queue_entry* q, u8* use_mem, u32 handicap,
 
       } else {
 
-        q->exec_cksum = cksum;
-        if (fast_path_binary) q->fast_path_val = fast_path_val;
         memcpy(first_trace, trace_bits, MAP_SIZE);
 
       }

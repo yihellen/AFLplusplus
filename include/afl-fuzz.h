@@ -106,6 +106,13 @@
 #define CASE_PREFIX "id_"
 #endif                                                    /* ^!SIMPLE_FILES */
 
+struct fast_queue_entry {
+
+  u64                      fast_path_val; /* all added IP of a fath path      */
+  struct fast_queue_entry* fast_path_next;
+
+};
+
 struct queue_entry {
 
   u8* fname;                            /* File name for the test case      */
@@ -127,13 +134,10 @@ struct queue_entry {
   u64 exec_us,                          /* Execution time (us)              */
       handicap,                         /* Number of queue cycles behind    */
       n_fuzz,                          /* Number of fuzz, does not overflow */
-      fast_path_val,                    /* all added IP of a fath path      */
       depth;                            /* Path depth                       */
 
   u8* trace_mini;                       /* Trace bytes, if kept             */
   u32 tc_ref;                           /* Trace bytes ref count            */
-
-  struct queue_entry *fast_path_next;
 
   struct queue_entry *next,             /* Next element, if any             */
       *next_100;                        /* 100 elements ahead               */
@@ -450,7 +454,7 @@ extern struct queue_entry *queue,       /* Fuzzing queue (linked list)      */
     *queue_top,                         /* Top of the list                  */
     *q_prev100;                         /* Previous 100 marker              */
 
-extern struct queue_entry ** fast_path_map;
+extern struct fast_queue_entry** fast_path_map;
 
 extern struct queue_entry*
     top_rated[MAP_SIZE];                /* Top entries for bitmap bytes     */

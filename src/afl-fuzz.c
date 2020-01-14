@@ -200,9 +200,9 @@ int main(int argc, char** argv) {
     switch (opt) {
 
       case 'P': {
-      
+
         fast_path_binary = optarg;
-        fast_path_map = ck_alloc(MAP_SIZE * sizeof(struct queue_entry *));
+        fast_path_map = ck_alloc(MAP_SIZE * sizeof(struct fast_queue_entry*));
         break;
 
       }

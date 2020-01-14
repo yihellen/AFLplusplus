@@ -524,7 +524,12 @@ u8 save_if_interesting(char** argv, void* mem, u32 len, u8 fault) {
   struct queue_entry* q = queue;
   while (q) {
 
-    if (q->exec_cksum == cksum) q->n_fuzz = q->n_fuzz + 1;
+    if (q->exec_cksum == cksum) {
+
+      q->n_fuzz += 1;
+      break;
+
+    }
 
     q = q->next;
 
@@ -563,20 +568,6 @@ u8 save_if_interesting(char** argv, void* mem, u32 len, u8 fault) {
     }
 
     queue_top->exec_cksum = cksum;
-
-    if (fast_path_binary) {
-
-      u64 h = fast_path_val;
-      h = (h >> 4) ^ (h << 8);
-      h &= MAP_SIZE -1;
-      
-      struct queue_entry* old_q = fast_path_map[h];
-      queue_top->fast_path_next = old_q;
-      fast_path_map[h] = queue_top;
-      
-      queue_top->fast_path_val = fast_path_val;
-
-    }
 
     /* Try to calibrate inline; this also calls update_bitmap_score() when
        successful. */
