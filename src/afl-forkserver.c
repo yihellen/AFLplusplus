@@ -537,7 +537,6 @@ void init_forkserver2(char **argv) {
        specified, stdin is /dev/null; otherwise, out_fd is cloned instead. */
 
     setsid();
-    fprintf(stderr, "run %s\n", argv2[0]);
 
     if (!getenv("AFL_DEBUG_CHILD_OUTPUT")) {
 
