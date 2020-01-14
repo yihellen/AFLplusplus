@@ -71,6 +71,7 @@ void write_stats_file(double bitmap_cvg, double stability, double eps) {
           "fuzzer_pid        : %d\n"
           "cycles_done       : %llu\n"
           "execs_done        : %llu\n"
+          "execs_done_fp     : %llu\n"
           "execs_per_sec     : %0.02f\n"
           "paths_total       : %u\n"
           "paths_favored     : %u\n"
@@ -98,10 +99,10 @@ void write_stats_file(double bitmap_cvg, double stability, double eps) {
           "target_mode       : %s%s%s%s%s%s%s%s\n"
           "command_line      : %s\n",
           start_time / 1000, get_cur_time() / 1000, getpid(),
-          queue_cycle ? (queue_cycle - 1) : 0, total_execs, eps, queued_paths,
-          queued_favored, queued_discovered, queued_imported, max_depth,
-          current_entry, pending_favored, pending_not_fuzzed, queued_variable,
-          stability, bitmap_cvg, unique_crashes, unique_hangs,
+          queue_cycle ? (queue_cycle - 1) : 0, total_execs, total_execs2, eps,
+          queued_paths, queued_favored, queued_discovered, queued_imported,
+          max_depth, current_entry, pending_favored, pending_not_fuzzed,
+          queued_variable, stability, bitmap_cvg, unique_crashes, unique_hangs,
           last_path_time / 1000, last_crash_time / 1000, last_hang_time / 1000,
           total_execs - last_crash_execs, exec_tmout, slowest_exec_ms,
 #ifdef __APPLE__
@@ -479,15 +480,33 @@ void show_stats(void) {
 
   if (crash_mode) {
 
-    SAYF(bV bSTOP " total execs : " cRST "%-20s " bSTG bV bSTOP
-                  "   new crashes : %s%-22s" bSTG         bV "\n",
-         DI(total_execs), unique_crashes ? cLRD : cRST, tmp);
+    if (!fast_path_binary)
+
+      SAYF(bV bSTOP " total execs : " cRST "%20s " bSTG bV bSTOP
+                    "   new crashes : %s%-22s" bSTG        bV "\n",
+           DI(total_execs), unique_crashes ? cLRD : cRST, tmp);
+
+    else
+
+      SAYF(bV bSTOP " total execs : " cRST "%9s/%-10s " bSTG bV bSTOP
+                    "   new crashes : %s%-22s" bSTG             bV "\n",
+           DI(total_execs), DI(total_execs2), unique_crashes ? cLRD : cRST,
+           tmp);
 
   } else {
 
-    SAYF(bV bSTOP " total execs : " cRST "%-20s " bSTG bV bSTOP
-                  " total crashes : %s%-22s" bSTG         bV "\n",
-         DI(total_execs), unique_crashes ? cLRD : cRST, tmp);
+    if (!fast_path_binary)
+
+      SAYF(bV bSTOP " total execs : " cRST "%-20s " bSTG bV bSTOP
+                    " total crashes : %s%-22s" bSTG         bV "\n",
+           DI(total_execs), unique_crashes ? cLRD : cRST, tmp);
+
+    else
+
+      SAYF(bV bSTOP " total execs : " cRST "%9s/%-10s " bSTG bV bSTOP
+                    " total crashes : %s%-22s" bSTG             bV "\n",
+           DI(total_execs), DI(total_execs2), unique_crashes ? cLRD : cRST,
+           tmp);
 
   }
 

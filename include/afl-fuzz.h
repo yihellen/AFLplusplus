@@ -267,7 +267,8 @@ extern u8 *in_dir,                      /* Input directory with test cases  */
 extern u32 exec_tmout;                  /* Configurable exec timeout (ms)   */
 extern u32 hang_tmout;                  /* Timeout used for hang det (ms)   */
 
-extern u64 mem_limit;                   /* Memory cap for child (MB)        */
+extern u64 mem_limit,                   /* Memory cap for child (MB)        */
+    fast_path_val;                      /* fastpath value of run            */
 
 extern u8 cal_cycles,                   /* Calibration cycles defaults      */
     cal_cycles_long,                    /* Calibration cycles defaults      */
@@ -332,15 +333,20 @@ extern u8 skip_deterministic,           /* Skip deterministic stages?       */
     disable_trim;                       /* Never trim in fuzz_one           */
 
 extern s32 out_fd,                      /* Persistent fd for out_file       */
+    out_fd2,                         /* Persistent fd for out_file fastpath */
 #ifndef HAVE_ARC4RANDOM
     dev_urandom_fd,                     /* Persistent fd for /dev/urandom   */
 #endif
     dev_null_fd,                        /* Persistent fd for /dev/null      */
     fsrv_ctl_fd,                        /* Fork server control pipe (write) */
-    fsrv_st_fd;                         /* Fork server status pipe (read)   */
+    fsrv_st_fd,                         /* Fork server status pipe (read)   */
+    fsrv2_ctl_fd,                       /* Fork server2 control pipe (write)*/
+    fsrv2_st_fd;                        /* Fork server2 status pipe (read)  */
 
 extern s32 forksrv_pid,                 /* PID of the fork server           */
+    forksrv2_pid,                       /* PID of the fastpath fork server  */
     child_pid,                          /* PID of the fuzzed program        */
+    child2_pid,                       /* PID of the fuzzed fastpath program */
     out_dir_fd;                         /* FD of the lock file              */
 
 extern u8* trace_bits;                  /* SHM with instrumentation bitmap  */
@@ -378,6 +384,7 @@ extern u64 total_crashes,               /* Total number of crashes          */
     unique_tmouts,                      /* Timeouts with unique signatures  */
     unique_hangs,                       /* Hangs with unique signatures     */
     total_execs,                        /* Total execve() calls             */
+    total_execs2,                       /* Total execve() fastpath calls    */
     slowest_exec_ms,                    /* Slowest testcase non hang in ms  */
     start_time,                         /* Unix start time (ms)             */
     last_path_time,                     /* Time for most recent path (ms)   */

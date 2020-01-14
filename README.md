@@ -1,5 +1,18 @@
 # american fuzzy lop plus plus (afl++)
 
+## development path: fastpath integration.
+
+
+  Step 1: set AFL_LLVM_FASTPATH=1 then compile the target and save the
+          resulting binary as target.fastpath
+  Step 2: make clean and then compile/prepare your target as usual 
+  Step 3: run afl-fuzz as usual but add as option: -P /path/to/target.fastpath
+
+  This results in a ~20% speed increase while not losing paths
+
+
+## original header
+
   ![Travis State](https://api.travis-ci.com/vanhauser-thc/AFLplusplus.svg?branch=master)
 
   Release Version: 2.60c 

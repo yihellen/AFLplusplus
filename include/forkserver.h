@@ -29,6 +29,7 @@
 
 void handle_timeout(int sig);
 void init_forkserver(char **argv);
+void init_forkserver2(char **argv);
 
 #ifdef __APPLE__
 #define MSG_FORK_ON_APPLE                                                    \

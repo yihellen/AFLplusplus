@@ -106,6 +106,7 @@ static u8 qemu_mode;
 FILE* plot_file;
 u8    uses_asan;
 s32   out_fd = -1, out_dir_fd = -1, dev_urandom_fd = -1;
+s32   forksrv2_pid, fsrv2_ctl_fd, fsrv2_st_fd;
 
 /* we import this as we need this information */
 extern u8 child_timed_out;

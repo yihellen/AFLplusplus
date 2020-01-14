@@ -39,19 +39,19 @@ u8 run_target(char** argv, u32 timeout) {
 
   child_timed_out = 0;
 
-  /* After this memset, trace_bits[] are effectively volatile, so we
-     must prevent any earlier operations from venturing into that
-     territory. */
-
-  memset(trace_bits, 0, MAP_SIZE);
-  MEM_BARRIER();
-
   /* If we're running in "dumb" mode, we can't rely on the fork server
      logic compiled into the target program, so we will just keep calling
      execve(). There is a bit of code duplication between here and
      init_forkserver(), but c'est la vie. */
 
   if (dumb_mode == 1 || no_forkserver) {
+
+    /* After this memset, trace_bits[] are effectively volatile, so we
+       must prevent any earlier operations from venturing into that
+       territory. */
+
+    memset(trace_bits, 0, MAP_SIZE);
+    MEM_BARRIER();
 
     child_pid = fork();
 
@@ -138,6 +138,88 @@ u8 run_target(char** argv, u32 timeout) {
 
     /* In non-dumb mode, we have the fork server up and running, so simply
        tell it to have at it, and then read back PID. */
+
+    if (fast_path_binary) {
+
+      memset(trace_bits, 0, 8);
+      MEM_BARRIER();
+      if ((res = write(fsrv2_ctl_fd, &prev_timed_out, 4)) != 4) {
+
+        if (stop_soon) return 0;
+        RPFATAL(res, "Unable to request new process from fork server 2 (OOM?)");
+
+      }
+
+      if ((res = read(fsrv2_st_fd, &child2_pid, 4)) != 4) {
+
+        if (stop_soon) return 0;
+        RPFATAL(res, "Unable to receive new process from fork server 2 (OOM?)");
+
+      }
+
+      if (child2_pid <= 0) FATAL("Fork server 2 is misbehaving (OOM?)");
+
+      it.it_value.tv_sec = (timeout / 1000);
+      it.it_value.tv_usec = (timeout % 1000) * 1000;
+
+      setitimer(ITIMER_REAL, &it, NULL);
+
+      if ((res = read(fsrv2_st_fd, &status, 4)) != 4) {
+
+        if (stop_soon) return 0;
+        SAYF(
+            "\n" cLRD "[-] " cRST
+            "Unable to communicate with fork server 2. Some possible "
+            "reasons:\n\n"
+            "    - You've run out of memory. Use -m to increase the the memory "
+            "limit\n"
+            "      to something higher than %lld.\n"
+            "    - The binary or one of the libraries it uses manages to "
+            "create\n"
+            "      threads before the forkserver initializes.\n"
+            "    - The binary, at least in some circumstances, exits in a way "
+            "that\n"
+            "      also kills the parent process - raise() could be the "
+            "culprit.\n\n"
+            "If all else fails you can disable the fork server via "
+            "AFL_NO_FORKSRV=1.\n",
+            mem_limit);
+        RPFATAL(res, "Unable to communicate with fork server");
+
+      }
+
+      if (!WIFSTOPPED(status)) child2_pid = 0;
+
+      getitimer(ITIMER_REAL, &it);
+      exec_ms = (u64)timeout -
+                (it.it_value.tv_sec * 1000 + it.it_value.tv_usec / 1000);
+
+      it.it_value.tv_sec = 0;
+      it.it_value.tv_usec = 0;
+
+      setitimer(ITIMER_REAL, &it, NULL);
+
+      ++total_execs2;
+
+      /* Any subsequent operations on trace_bits must not be moved by the
+         compiler below this point. Past this location, trace_bits[] behave
+         very normally and do not have to be treated as volatile. */
+
+      struct queue_entry* q = queue;
+      fast_path_val = *(u64*)trace_bits;
+      while (q != NULL) {
+
+        if (q->fast_path_val == fast_path_val) { return FAULT_NONE; }
+
+        q = q->next;
+
+      }
+
+      MEM_BARRIER();
+      memset(trace_bits, 0, MAP_SIZE);
+      MEM_BARRIER();
+
+    }
 
     if ((res = write(fsrv_ctl_fd, &prev_timed_out, 4)) != 4) {
 
@@ -406,6 +488,9 @@ u8 calibrate_case(char** argv, struct queue_entry* q, u8* use_mem, u32 handicap,
 
   if (dumb_mode != 1 && !no_forkserver && !forksrv_pid) init_forkserver(argv);
 
+  if (fast_path_binary && dumb_mode != 1 && !no_forkserver && !forksrv2_pid)
+    init_forkserver2(argv);
+
   if (q->exec_cksum) memcpy(first_trace, trace_bits, MAP_SIZE);
 
   start_us = get_cur_time_us();
@@ -459,6 +544,7 @@ u8 calibrate_case(char** argv, struct queue_entry* q, u8* use_mem, u32 handicap,
       } else {
 
         q->exec_cksum = cksum;
+        if (fast_path_binary) q->fast_path_val = fast_path_val;
         memcpy(first_trace, trace_bits, MAP_SIZE);
 
       }

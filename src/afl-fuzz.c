@@ -1046,6 +1046,7 @@ stop_fuzzing:
   destroy_queue();
   destroy_extras();
   ck_free(target_path);
+  if (fast_path_binary) ck_free(target_path2);
   ck_free(sync_id);
 
   alloc_report();

@@ -563,6 +563,7 @@ u8 save_if_interesting(char** argv, void* mem, u32 len, u8 fault) {
     }
 
     queue_top->exec_cksum = cksum;
+    if (fast_path_binary) queue_top->fast_path_val = fast_path_val;
 
     /* Try to calibrate inline; this also calls update_bitmap_score() when
        successful. */

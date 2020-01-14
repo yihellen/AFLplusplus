@@ -36,6 +36,8 @@
 #endif
 
 u8*       target_path;                  /* Path to target binary            */
+u8*       target_path_orig;             /* Path to target binary, saved     */
+u8*       target_path2;                 /* Path to fastpath target binary   */
 extern u8 use_stdin;
 
 void detect_file_args(char** argv, u8* prog_in) {
@@ -111,6 +113,7 @@ char** get_qemu_argv(u8* own_loc, char** argv, int argc) {
 
   new_argv[2] = target_path;
   new_argv[1] = "--";
+  target_path_orig = target_path;
 
   /* Now we need to actually find the QEMU binary to put in argv[0]. */
 
@@ -185,6 +188,7 @@ char** get_wine_argv(u8* own_loc, char** argv, int argc) {
   memcpy(new_argv + 2, argv + 1, sizeof(char*) * argc);
 
   new_argv[1] = target_path;
+  target_path_orig = target_path;
 
   /* Now we need to actually find the QEMU binary to put in argv[0]. */
 

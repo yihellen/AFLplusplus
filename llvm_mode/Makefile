@@ -130,7 +130,7 @@ ifeq "$(TEST_MMAP)" "1"
 endif
 
 ifndef AFL_TRACE_PC
-  PROGS      = ../afl-clang-fast ../afl-llvm-pass.so ../libLLVMInsTrim.so ../afl-llvm-rt.o ../afl-llvm-rt-32.o ../afl-llvm-rt-64.o ../compare-transform-pass.so ../split-compares-pass.so ../split-switches-pass.so
+  PROGS      = ../afl-clang-fast ../afl-llvm-pass.so ../afl-llvm-fastpass.so ../libLLVMInsTrim.so ../afl-llvm-rt.o ../afl-llvm-rt-32.o ../afl-llvm-rt-64.o ../compare-transform-pass.so ../split-compares-pass.so ../split-switches-pass.so
 else
   PROGS      = ../afl-clang-fast ../afl-llvm-rt.o ../afl-llvm-rt-32.o ../afl-llvm-rt-64.o ../compare-transform-pass.so ../split-compares-pass.so ../split-switches-pass.so
 endif
@@ -205,6 +205,9 @@ endif
 ../afl-llvm-pass.so: afl-llvm-pass.so.cc | test_deps
 	$(CXX) $(CLANG_CFL) -DLLVMInsTrim_EXPORTS -fno-rtti -fPIC -std=$(LLVM_STDCXX) -shared $< -o $@ $(CLANG_LFL)
 
+../afl-llvm-fastpass.so: afl-llvm-fastpass.so.cc
+	$(CXX) $(CLANG_CFL) -DLLVMInsTrim_EXPORTS -fno-rtti -fPIC -std=$(LLVM_STDCXX) -shared $< -o $@ $(CLANG_LFL)
+
 # laf
 ../split-switches-pass.so:	split-switches-pass.so.cc | test_deps
 	$(CXX) $(CLANG_CFL) -shared $< -o $@ $(CLANG_LFL)
@@ -261,5 +264,5 @@ vpath  % ..
 	ln -sf afl-clang-fast.8 ../afl-clang-fast++.8
 
 clean:
-	rm -f *.o *.so *~ a.out core core.[1-9][0-9]* .test2 test-instr .test-instr0 .test-instr1 afl-llvm-pass.dwo
+	rm -f *.o *.so *~ a.out core core.[1-9][0-9]* .test2 test-instr .test-instr0 .test-instr1 afl-llvm-pass.dwo afl-llvm-fastpass.dwo
 	rm -f $(PROGS) ../afl-clang-fast++ ../afl-clang-fast*.8

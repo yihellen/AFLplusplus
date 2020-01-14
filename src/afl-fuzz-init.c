@@ -1406,7 +1406,7 @@ void setup_stdio_file(void) {
 
   unlink(fn);                                              /* Ignore errors */
 
-  out_fd = open(fn, O_RDWR | O_CREAT | O_EXCL, 0600);
+  out_fd2 = out_fd = open(fn, O_RDWR | O_CREAT | O_EXCL, 0600);
 
   if (out_fd < 0) PFATAL("Unable to create '%s'", fn);
 
@@ -1854,6 +1854,56 @@ void check_binary(u8* fname) {
     }
 
     if (!target_path) FATAL("Program '%s' not found or not executable", fname);
+
+  }
+
+  if (fast_path_binary) {
+
+    if (strchr(fast_path_binary, '/') || !(env_path = getenv("PATH"))) {
+
+      target_path2 = ck_strdup(fast_path_binary);
+      if (stat(target_path2, &st) || !S_ISREG(st.st_mode) ||
+          !(st.st_mode & 0111) || (f_len = st.st_size) < 4)
+        FATAL("Program '%s' not found or not executable", fname);
+
+    } else {
+
+      while (env_path) {
+
+        u8 *cur_elem, *delim = strchr(env_path, ':');
+
+        if (delim) {
+
+          cur_elem = ck_alloc(delim - env_path + 1);
+          memcpy(cur_elem, env_path, delim - env_path);
+          ++delim;
+
+        } else
+
+          cur_elem = ck_strdup(env_path);
+
+        env_path = delim;
+
+        if (cur_elem[0])
+          target_path2 = alloc_printf("%s/%s", cur_elem, fname);
+        else
+          target_path2 = ck_strdup(fast_path_binary);
+
+        ck_free(cur_elem);
+
+        if (!stat(target_path2, &st) && S_ISREG(st.st_mode) &&
+            (st.st_mode & 0111) && (f_len = st.st_size) >= 4)
+          break;
+
+        ck_free(target_path2);
+        target_path2 = 0;
+
+      }
+
+      if (!target_path2)
+        FATAL("Program '%s' not found or not executable", fname);
+
+    }
 
   }
 

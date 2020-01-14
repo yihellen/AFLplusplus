@@ -28,6 +28,7 @@
 #include "types.h"
 
 extern u8* target_path;                 /* Path to target binary            */
+extern u8* target_path2;                /* Path to fastpath target binary   */
 
 void detect_file_args(char** argv, u8* prog_in);
 

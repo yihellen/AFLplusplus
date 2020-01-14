@@ -125,6 +125,62 @@ static void __afl_map_shm(void) {
 
 }
 
+static void __afl_map_shm2(void) {
+
+  u8* id_str = getenv(SHM_ENV_VAR);
+
+  /* If we're running under AFL, attach to the appropriate region, replacing the
+     early-stage __afl_area_initial region that is needed to allow some really
+     hacky .init code to work correctly in projects such as OpenSSL. */
+
+  if (id_str) {
+
+#ifdef USEMMAP
+    const char*    shm_file_path = id_str;
+    int            shm_fd = -1;
+    unsigned char* shm_base = NULL;
+
+    /* create the shared memory segment as if it was a file */
+    shm_fd = shm_open(shm_file_path, O_RDWR, 0600);
+    if (shm_fd == -1) {
+
+      printf("shm_open() failed\n");
+      exit(1);
+
+    }
+
+    /* map the shared memory segment to the address space of the process */
+    shm_base = mmap(0, 16, PROT_READ | PROT_WRITE, MAP_SHARED, shm_fd, 0);
+    if (shm_base == MAP_FAILED) {
+
+      close(shm_fd);
+      shm_fd = -1;
+
+      printf("mmap() failed\n");
+      exit(2);
+
+    }
+
+    __afl_area_ptr = shm_base;
+#else
+    u32 shm_id = atoi(id_str);
+
+    __afl_area_ptr = shmat(shm_id, NULL, 0);
+#endif
+
+    /* Whooooops. */
+
+    if (__afl_area_ptr == (void*)-1) _exit(1);
+
+    /* Write something into the bitmap so that even with low AFL_INST_RATIO,
+       our parent doesn't give up on us. */
+
+    __afl_area_ptr[0] = 1;
+
+  }
+
+}
+
 /* Fork server logic. */
 
 static void __afl_start_forkserver(void) {
@@ -211,6 +267,92 @@ static void __afl_start_forkserver(void) {
 
 }
 
+/* Fork server 2 logic - fastpath. */
+
+static void __afl_start_forkserver2(void) {
+
+  static u8 tmp[4];
+  s32       child_pid;
+
+  u8 child_stopped = 0;
+
+  void (*old_sigchld_handler)(int) = signal(SIGCHLD, SIG_DFL);
+
+  /* Phone home and tell the parent that we're OK. If parent isn't there,
+     assume we're not running in forkserver mode and just execute program. */
+
+  if (write(FORKSRV_FD + 3, tmp, 4) != 4) return;
+
+  while (1) {
+
+    u32 was_killed;
+    int status;
+
+    /* Wait for parent by reading from the pipe. Abort if read fails. */
+
+    if (read(FORKSRV_FD + 2, &was_killed, 4) != 4) _exit(1);
+
+    /* If we stopped the child in persistent mode, but there was a race
+       condition and afl-fuzz already issued SIGKILL, write off the old
+       process. */
+
+    if (child_stopped && was_killed) {
+
+      child_stopped = 0;
+      if (waitpid(child_pid, &status, 0) < 0) _exit(1);
+
+    }
+
+    if (!child_stopped) {
+
+      /* Once woken up, create a clone of our process. */
+
+      child_pid = fork();
+      if (child_pid < 0) _exit(1);
+
+      /* In child process: close fds, resume execution. */
+
+      if (!child_pid) {
+
+        signal(SIGCHLD, old_sigchld_handler);
+
+        close(FORKSRV_FD + 2);
+        close(FORKSRV_FD + 3);
+        return;
+
+      }
+
+    } else {
+
+      /* Special handling for persistent mode: if the child is alive but
+         currently stopped, simply restart it with SIGCONT. */
+
+      kill(child_pid, SIGCONT);
+      child_stopped = 0;
+
+    }
+
+    /* In parent process: write PID to pipe, then wait for child. */
+
+    if (write(FORKSRV_FD + 3, &child_pid, 4) != 4) _exit(1);
+
+    if (waitpid(child_pid, &status, is_persistent ? WUNTRACED : 0) < 0)
+      _exit(1);
+
+    /* In persistent mode, the child stops itself with SIGSTOP to indicate
+       a successful run. In this case, we want to wake it up without forking
+       again. */
+
+    if (WIFSTOPPED(status)) child_stopped = 1;
+
+    /* Relay wait status to pipe, then loop back. */
+
+    if (write(FORKSRV_FD + 3, &status, 4) != 4) _exit(1);
+
+  }
+
+}
+
 /* A simplified persistent mode handler, used as explained in README.llvm. */
 
 int __afl_persistent_loop(unsigned int max_cnt) {
@@ -283,6 +425,20 @@ void __afl_manual_init(void) {
 
 }
 
+void __afl_manual_init2(void) {
+
+  static u8 init_done;
+
+  if (!init_done) {
+
+    __afl_map_shm2();
+    __afl_start_forkserver2();
+    init_done = 1;
+
+  }
+
+}
+
 /* Proper initialization routine. */
 
 __attribute__((constructor(CONST_PRIO))) void __afl_auto_init(void) {
@@ -292,6 +448,16 @@ __attribute__((constructor(CONST_PRIO))) void __afl_auto_init(void) {
   if (getenv(DEFER_ENV_VAR)) return;
 
   __afl_manual_init();
+
+}
+
+__attribute__((constructor(CONST_PRIO))) void __afl_auto_init2(void) {
+
+  is_persistent = !!getenv(PERSIST_ENV_VAR);
+
+  if (getenv(DEFER_ENV_VAR)) return;
+
+  __afl_manual_init2();
 
 }
 
