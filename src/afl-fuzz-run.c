@@ -205,13 +205,18 @@ u8 run_target(char** argv, u32 timeout) {
          compiler below this point. Past this location, trace_bits[] behave
          very normally and do not have to be treated as volatile. */
 
-      struct queue_entry* q = queue;
       fast_path_val = *(u64*)trace_bits;
+      
+      u64 h = fast_path_val;
+      h = (h >> 4) ^ (h << 8);
+      h &= MAP_SIZE -1;
+      
+      struct queue_entry* q = fast_path_map[h];
       while (q != NULL) {
 
         if (q->fast_path_val == fast_path_val) { return FAULT_NONE; }
 
-        q = q->next;
+        q = q->fast_path_next;
 
       }
 
