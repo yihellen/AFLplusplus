@@ -104,7 +104,8 @@ void write_stats_file(double bitmap_cvg, double stability, double eps) {
           max_depth, current_entry, pending_favored, pending_not_fuzzed,
           queued_variable, stability, bitmap_cvg, unique_crashes, unique_hangs,
           last_path_time / 1000, last_crash_time / 1000, last_hang_time / 1000,
-          total_execs - last_crash_execs, exec_tmout, slowest_exec_ms,
+          total_execs + total_execs2 - last_crash_execs, exec_tmout,
+          slowest_exec_ms,
 #ifdef __APPLE__
           (unsigned long int)(rus.ru_maxrss >> 20),
 #else
@@ -207,12 +208,13 @@ void show_stats(void) {
 
   if (!last_execs) {
 
-    avg_exec = ((double)total_execs) * 1000 / (cur_ms - start_time);
+    avg_exec = ((double)total_execs + (double)total_execs2) * 1000 /
+               (cur_ms - start_time);
 
   } else {
 
-    double cur_avg =
-        ((double)(total_execs - last_execs)) * 1000 / (cur_ms - last_ms);
+    double cur_avg = ((double)(total_execs + total_execs2 - last_execs)) *
+                     1000 / (cur_ms - last_ms);
 
     /* If there is a dramatic (5x+) jump in speed, reset the indicator
        more quickly. */
@@ -225,7 +227,7 @@ void show_stats(void) {
   }
 
   last_ms = cur_ms;
-  last_execs = total_execs;
+  last_execs = total_execs + total_execs2;
 
   /* Tell the callers when to contact us (as measured in execs). */
 
@@ -488,8 +490,8 @@ void show_stats(void) {
 
     else
 
-      SAYF(bV bSTOP " total execs : " cRST "%9s/%-10s " bSTG bV bSTOP
-                    "   new crashes : %s%-22s" bSTG             bV "\n",
+      SAYF(bV bSTOP " total execs : " cRST "%9s/%10s " bSTG bV bSTOP
+                    "   new crashes : %s%-22s" bSTG            bV "\n",
            DI(total_execs), DI(total_execs2), unique_crashes ? cLRD : cRST,
            tmp);
 

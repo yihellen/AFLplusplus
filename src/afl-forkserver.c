@@ -173,9 +173,9 @@ void init_forkserver(char **argv) {
     /* Umpf. On OpenBSD, the default fd limit for root users is set to
        soft 128. Let's try to fix that... */
 
-    if (!getrlimit(RLIMIT_NOFILE, &r) && r.rlim_cur < FORKSRV_FD + 2) {
+    if (!getrlimit(RLIMIT_NOFILE, &r) && r.rlim_cur < FORKSRV_FD) {
 
-      r.rlim_cur = FORKSRV_FD + 2;
+      r.rlim_cur = FORKSRV_FD;
       setrlimit(RLIMIT_NOFILE, &r);                        /* Ignore errors */
 
     }
@@ -476,7 +476,7 @@ void init_forkserver2(char **argv) {
   do {
 
     if (i >= 62) FATAL("Too many command line options for the target");
-    if ((u8 *)argv[i] == (u8 *)target_path_orig)
+    if (strcmp(argv[i], target_path_orig) == 0)
       argv2[i] = target_path2;
     else
       argv2[i] = argv[i];
@@ -486,7 +486,7 @@ void init_forkserver2(char **argv) {
 
   argv2[i] = NULL;
 
-  ACTF("Spinning up the fork server...");
+  ACTF("Spinning up the fork server 2 ...");
 
   if (pipe(st_pipe) || pipe(ctl_pipe)) PFATAL("pipe() failed");
 
@@ -537,6 +537,7 @@ void init_forkserver2(char **argv) {
        specified, stdin is /dev/null; otherwise, out_fd is cloned instead. */
 
     setsid();
+    fprintf(stderr, "run %s\n", argv2[0]);
 
     if (!getenv("AFL_DEBUG_CHILD_OUTPUT")) {
 

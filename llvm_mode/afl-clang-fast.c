@@ -208,11 +208,10 @@ static void edit_params(u32 argc, char** argv) {
   cc_params[cc_par_cnt++] = "-Xclang";
   if (getenv("AFL_LLVM_INSTRIM") != NULL || getenv("INSTRIM_LIB") != NULL)
     cc_params[cc_par_cnt++] = alloc_printf("%s/libLLVMInsTrim.so", obj_path);
+  else if (getenv("AFL_LLVM_FASTPATH") != NULL)
+    cc_params[cc_par_cnt++] = alloc_printf("%s/afl-llvm-fastpass.so", obj_path);
   else
-    if (getenv("AFL_LLVM_FASTPATH") != NULL)
-      cc_params[cc_par_cnt++] = alloc_printf("%s/afl-llvm-fastpass.so", obj_path);
-  else
-      cc_params[cc_par_cnt++] = alloc_printf("%s/afl-llvm-pass.so", obj_path);
+    cc_params[cc_par_cnt++] = alloc_printf("%s/afl-llvm-pass.so", obj_path);
 #endif                                                     /* ^USE_TRACE_PC */
 
   cc_params[cc_par_cnt++] = "-Qunused-arguments";
@@ -353,36 +352,36 @@ static void edit_params(u32 argc, char** argv) {
       "_L(_A); })";
 
   if (getenv("AFL_LLVM_FASTPATH") != NULL) {
-  
-  cc_params[cc_par_cnt++] =
-      "-D__AFL_INIT()="
-      "do { static volatile char *_A __attribute__((used)); "
-      " _A = (char*)\"" DEFER_SIG
-      "\"; "
+
+    cc_params[cc_par_cnt++] =
+        "-D__AFL_INIT()="
+        "do { static volatile char *_A __attribute__((used)); "
+        " _A = (char*)\"" DEFER_SIG
+        "\"; "
 #ifdef __APPLE__
-      "__attribute__((visibility(\"default\"))) "
-      "void _I(void) __asm__(\"___afl_manual_init2\"); "
+        "__attribute__((visibility(\"default\"))) "
+        "void _I(void) __asm__(\"___afl_manual_init2\"); "
 #else
-      "__attribute__((visibility(\"default\"))) "
-      "void _I(void) __asm__(\"__afl_manual_init2\"); "
+        "__attribute__((visibility(\"default\"))) "
+        "void _I(void) __asm__(\"__afl_manual_init2\"); "
 #endif                                                        /* ^__APPLE__ */
-      "_I(); } while (0)";
-  
+        "_I(); } while (0)";
+
   } else {
 
-  cc_params[cc_par_cnt++] =
-      "-D__AFL_INIT()="
-      "do { static volatile char *_A __attribute__((used)); "
-      " _A = (char*)\"" DEFER_SIG
-      "\"; "
+    cc_params[cc_par_cnt++] =
+        "-D__AFL_INIT()="
+        "do { static volatile char *_A __attribute__((used)); "
+        " _A = (char*)\"" DEFER_SIG
+        "\"; "
 #ifdef __APPLE__
-      "__attribute__((visibility(\"default\"))) "
-      "void _I(void) __asm__(\"___afl_manual_init\"); "
+        "__attribute__((visibility(\"default\"))) "
+        "void _I(void) __asm__(\"___afl_manual_init\"); "
 #else
-      "__attribute__((visibility(\"default\"))) "
-      "void _I(void) __asm__(\"__afl_manual_init\"); "
+        "__attribute__((visibility(\"default\"))) "
+        "void _I(void) __asm__(\"__afl_manual_init\"); "
 #endif                                                        /* ^__APPLE__ */
-      "_I(); } while (0)";
+        "_I(); } while (0)";
 
   }
 
