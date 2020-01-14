@@ -490,7 +490,7 @@ void show_stats(void) {
 
     else
 
-      SAYF(bV bSTOP " total execs : " cRST "%9s/%10s " bSTG bV bSTOP
+      SAYF(bV bSTOP " total execs : " cRST "%9s/%-10s " bSTG bV bSTOP
                     "   new crashes : %s%-22s" bSTG            bV "\n",
            DI(total_execs), DI(total_execs2), unique_crashes ? cLRD : cRST,
            tmp);
