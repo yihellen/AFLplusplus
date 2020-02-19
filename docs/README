@@ -2,7 +2,7 @@
 # DEPRECATED BRANCH
 
 Note that this branch is deprecated.
-The network code works fine, and the documenation is correct.
+The network code works fine, and the documentation is correct.
 
 *BUT* the performance ins very, very bad.
 If you use libdesock_dup.so from the preeny project, you get 10x the speed.
