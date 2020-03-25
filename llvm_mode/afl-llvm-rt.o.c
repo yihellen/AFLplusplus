@@ -265,7 +265,7 @@ static void __afl_start_forkserver(void) {
 
 /* A simplified persistent mode handler, used as explained in
  * llvm_mode/README.md. */
-
+#if 0
 int __afl_persistent_loop(unsigned int max_cnt) {
 
   static u8  first_pass = 1;
@@ -300,6 +300,107 @@ int __afl_persistent_loop(unsigned int max_cnt) {
 
       __afl_area_ptr[0] = 1;
       memset(__afl_prev_loc, 0, MAX_NGRAM_SIZE * sizeof(PREV_LOC_T));
+
+      return 1;
+
+    } else {
+
+      /* When exiting __AFL_LOOP(), make sure that the subsequent code that
+         follows the loop is not traced. We do that by pivoting back to the
+         dummy output region. */
+
+      __afl_area_ptr = __afl_area_initial;
+
+    }
+
+  }
+
+  return 0;
+
+}
+#endif
+
+#define COV_8BIt_MODULES_MAX 64
+
+struct cov_struct {
+  char *start;
+  unsigned int len;
+};
+
+struct cov_struct cov_entries[COV_8BIt_MODULES_MAX];
+unsigned int cov_8bit_modules_count;
+unsigned int cov_8bit_total_size;
+
+void __sanitizer_cov_8bit_counters_init(char *start, char *end) {
+
+  if (cov_8bit_modules_count >= COV_8BIt_MODULES_MAX) {
+  
+      fprintf(stderr, "too many libraries compiled with coverage\n");
+      exit(1);
+  
+  }
+
+  cov_entries[cov_8bit_modules_count].start = start;
+  cov_entries[cov_8bit_modules_count].len = end - start;
+  cov_8bit_total_size += cov_entries[cov_8bit_modules_count].len;
+  cov_8bit_modules_count++;
+
+}
+
+/* A simplified persistent mode handler, used as explained in
+ * llvm_mode/README.md. */
+
+int __afl_persistent_loop(unsigned int max_cnt) {
+
+  static u8  first_pass = 1;
+  static u32 cycle_cnt, i, offset;
+
+  if (!cov_8bit_modules_count) {
+  
+    fprintf(stderr, "Error: no coverage in modules\n");
+    _exit(-1);
+  
+  }
+
+  if (first_pass) {
+
+    /* Make sure that every iteration of __AFL_LOOP() starts with a clean slate.
+       On subsequent calls, the parent will take care of that, but on the first
+       iteration, it's our job to erase any trace of whatever happened
+       before the loop. */
+
+    if (is_persistent) {
+
+      memset(__afl_area_ptr, 0, MAP_SIZE);
+      __afl_area_ptr[0] = 1;
+      memset(__afl_prev_loc, 0, sizeof(PREV_LOC_T));
+
+    }
+
+    cycle_cnt = max_cnt;
+    first_pass = 0;
+    return 1;
+
+  } else {
+
+    offset = 1;
+    for (i = 0; i < cov_8bit_modules_count; i++) {
+
+      memcpy(__afl_area_ptr + offset, cov_entries[i].start, cov_entries[i].len);
+      memset(cov_entries[i].start, 0, cov_entries[i].len);
+      offset += cov_entries[i].len;
+
+    }
+  
+  }
+
+  if (is_persistent) {
+
+    if (--cycle_cnt) {
+
+      raise(SIGSTOP);
+
+      memset(__afl_prev_loc, 0, sizeof(PREV_LOC_T));
 
       return 1;
 

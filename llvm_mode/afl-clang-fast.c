@@ -306,6 +306,15 @@ static void edit_params(u32 argc, char **argv) {
     cc_params[cc_par_cnt++] =
         "-fsanitize-coverage=trace-pc-guard";  // edge coverage by default
 
+  } else
+  
+      if (getenv("AFL_LLVM_TRACE_LOCAL")) {
+
+    cc_params[cc_par_cnt++] =
+        "-fsanitize-coverage=inline-8bit-counters";  // edge coverage by default
+    if (!be_quiet)
+      SAYF("NOTE: AFL_LLVM_TRACE_LOCAL requires the usage of __AFL_LOOP persistent mode\n");
+
   } else {
 
     cc_params[cc_par_cnt++] = "-Xclang";
