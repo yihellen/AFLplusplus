@@ -36,6 +36,7 @@
 #include <assert.h>
 #include <stdint.h>
 #include <errno.h>
+#include <pthread.h>
 
 #include <sys/mman.h>
 #include <sys/shm.h>
@@ -330,6 +331,8 @@ struct cov_struct {
 struct cov_struct cov_entries[COV_8BIt_MODULES_MAX];
 unsigned int cov_8bit_modules_count;
 unsigned int cov_8bit_total_size;
+unsigned int __afl_threaded = 0;
+pthread_t __afl_thread, __afl_thread_main;
 
 void __sanitizer_cov_8bit_counters_init(char *start, char *end) {
 
@@ -344,6 +347,31 @@ void __sanitizer_cov_8bit_counters_init(char *start, char *end) {
   cov_entries[cov_8bit_modules_count].len = end - start;
   cov_8bit_total_size += cov_entries[cov_8bit_modules_count].len;
   cov_8bit_modules_count++;
+
+}
+
+int __afl_persistent_loop_watch(char *foo) {
+
+    int i, offset = 1;
+    
+    pthread_join(__afl_thread, NULL);
+
+    if (__afl_area_ptr[0] == 1) {
+    
+      // main thread might have crashed
+      for (i = 0; i < cov_8bit_modules_count; i++) {
+
+        memcpy(__afl_area_ptr + offset, cov_entries[i].start, cov_entries[i].len);
+        memset(cov_entries[i].start, 0, cov_entries[i].len);
+        offset += cov_entries[i].len;
+
+      }
+    
+    } else __afl_area_ptr[0] = 1;
+    
+    __afl_threaded = 0;
+    pthread_exit(NULL);
+    return 0; // not reached
 
 }
 
@@ -369,10 +397,23 @@ int __afl_persistent_loop(unsigned int max_cnt) {
        iteration, it's our job to erase any trace of whatever happened
        before the loop. */
 
+    if (!__afl_threaded) {
+  
+      __afl_threaded = 1;
+      __afl_thread_main = pthread_self();
+      if (pthread_create(&__afl_thread, NULL, (void *)__afl_persistent_loop_watch, NULL) != 0) {
+    
+        fprintf(stderr, "Error: pthread_create failed\n");
+        exit(-1);
+    
+      }
+
+    }
+
     if (is_persistent) {
 
-      memset(__afl_area_ptr, 0, MAP_SIZE);
       __afl_area_ptr[0] = 1;
+      memset(__afl_area_ptr + 1, 0, MAP_SIZE - 1);
       memset(__afl_prev_loc, 0, sizeof(PREV_LOC_T));
 
     }
@@ -399,7 +440,7 @@ int __afl_persistent_loop(unsigned int max_cnt) {
     if (--cycle_cnt) {
 
       raise(SIGSTOP);
-
+      __afl_area_ptr[0] = 1;
       memset(__afl_prev_loc, 0, sizeof(PREV_LOC_T));
 
       return 1;
@@ -411,12 +452,14 @@ int __afl_persistent_loop(unsigned int max_cnt) {
          dummy output region. */
 
       __afl_area_ptr = __afl_area_initial;
+      __afl_area_ptr[0] = 2;
 
     }
 
   }
 
-  return 0;
+  //pthread_exit(NULL);
+  return 0; // not reached
 
 }
 

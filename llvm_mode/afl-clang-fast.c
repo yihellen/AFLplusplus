@@ -530,6 +530,7 @@ static void edit_params(u32 argc, char **argv) {
 
   // }
 
+  cc_params[cc_par_cnt++] = "-pthread";
   cc_params[cc_par_cnt] = NULL;
 
 }
