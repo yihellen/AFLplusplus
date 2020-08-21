@@ -80,7 +80,7 @@ struct cmp_map {
 
   struct cmp_header     headers[CMP_MAP_W];
   struct cmp_operands   log[CMP_MAP_W][CMP_MAP_H];
-  struct cmp_successors successors;
+  struct cmp_successors successors[CMP_MAP_W];
 
 };
 
