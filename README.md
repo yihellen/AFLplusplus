@@ -29,7 +29,7 @@ This could be used to test if these IDs are set in trace_bits, virgin_bits
 or whatever to see if they have already been solved, or if they are solved
 in a current attempt.
 
-**NOTE:** needs the usage of afl-clang-lto.
+**NOTE:** needs the usage of afl-clang-lto + .so from this branch
 
 This could also be expanded to afl-clang-fast sancov/pcguard/tracepc mode but is more work.
 
