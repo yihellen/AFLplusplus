@@ -103,9 +103,14 @@ bool AFLLTOPass::runOnModule(Module &M) {
   std::vector<std::string>         dictionary;
   std::vector<CallInst *>          calls;
   DenseMap<Value *, std::string *> valueMap;
+  DenseMap<BasicBlock *, uint32_t> idMap;
   std::vector<BasicBlock *>        BlockList;
   char *                           ptr;
   FILE *                           documentFile = NULL;
+  uint32_t                         cmplog_mode = 0;
+  GlobalVariable *                 savedSuccessors = NULL;
+  GlobalVariable *                 savedSuccessor1 = NULL;
+  GlobalVariable *                 savedSuccessor2 = NULL;
 
   srand((unsigned int)time(NULL));
 
@@ -128,7 +133,37 @@ bool AFLLTOPass::runOnModule(Module &M) {
 
     be_quiet = 1;
 
-  if (getenv("AFL_LLVM_CMPLOG")) autodictionary = 0;
+  if (getenv("AFL_LLVM_CMPLOG")) {
+
+    autodictionary = 0;
+    cmplog_mode = 1;
+
+    fprintf(stderr, "cmplog mode\n");
+
+#ifdef __ANDROID__
+    savedSuccessors =
+        new GlobalVariable(M, Int32Ty, false, GlobalValue::ExternalLinkage, 0,
+                           "__afl_successor_count");
+    savedSuccessor1 =
+        new GlobalVariable(M, Int32Ty, false, GlobalValue::ExternalLinkage, 0,
+                           "__afl_successor_1");
+    savedSuccessor2 =
+        new GlobalVariable(M, Int32Ty, false, GlobalValue::ExternalLinkage, 0,
+                           "__afl_successor_2");
+#else
+    savedSuccessors =
+        new GlobalVariable(M, Int32Ty, false, GlobalValue::ExternalLinkage, 0,
+                           "__afl_successor_count", 0,
+                           GlobalVariable::GeneralDynamicTLSModel, 0, false);
+    savedSuccessor1 = new GlobalVariable(
+        M, Int32Ty, false, GlobalValue::ExternalLinkage, 0, "__afl_successor_1",
+        0, GlobalVariable::GeneralDynamicTLSModel, 0, false);
+    savedSuccessor2 = new GlobalVariable(
+        M, Int32Ty, false, GlobalValue::ExternalLinkage, 0, "__afl_successor_2",
+        0, GlobalVariable::GeneralDynamicTLSModel, 0, false);
+#endif
+
+  }
 
   if ((ptr = getenv("AFL_LLVM_DOCUMENT_IDS")) != NULL) {
 
@@ -136,8 +171,6 @@ bool AFLLTOPass::runOnModule(Module &M) {
       WARNF("Cannot access document file %s", ptr);
 
   }
-
-  if (getenv("AFL_LLVM_LTO_AUTODICTIONARY")) autodictionary = 1;
 
   // we make this the default as the fixed map has problems with
   // defered forkserver, early constructors, ifuncs and maybe more
@@ -252,6 +285,8 @@ bool AFLLTOPass::runOnModule(Module &M) {
     }
 
     std::vector<BasicBlock *> InsBlocks;
+
+    idMap.shrink_and_clear();
 
     if (autodictionary) {
 
@@ -700,6 +735,14 @@ bool AFLLTOPass::runOnModule(Module &M) {
           BasicBlock::iterator IP = newBB->getFirstInsertionPt();
           IRBuilder<>          IRB(&(*IP));
 
+          if (cmplog_mode) {
+
+            idMap[newBB] = afl_global_id;
+            idMap[origBB] = afl_global_id;
+            fprintf(stderr, "[%p] <= %u\n", newBB, afl_global_id);
+
+          }
+
           /* Set the ID of the inserted basic block */
 
           ConstantInt *CurLoc = ConstantInt::get(Int32Ty, afl_global_id++);
@@ -747,6 +790,95 @@ bool AFLLTOPass::runOnModule(Module &M) {
         }
 
       } while (i > 0);
+
+    }
+
+    if (cmplog_mode && F.size() > 1) {
+
+      int skip_block;
+      for (auto &BB : F) {
+
+        skip_block = 0;
+        for (auto &IN : BB) {
+
+          if (!skip_block) {
+
+            CallInst *callInst = nullptr;
+
+            if ((callInst = dyn_cast<CallInst>(&IN))) {
+
+              Function *Callee = callInst->getCalledFunction();
+              if (!Callee) continue;
+              if (callInst->getCallingConv() != llvm::CallingConv::C) continue;
+              std::string FuncName = Callee->getName().str();
+              if (!FuncName.compare(0, 22, "__sanitizer_cov_trace_") ||
+                  !FuncName.compare(0, 13, "__cmplog_ins_")) {
+
+                fprintf(stderr, "cmplog found!!\n");
+                int         count = 0;
+                BasicBlock *first = NULL, *second;
+
+                for (auto I = succ_begin(&BB), E = succ_end(&BB); I != E; ++I) {
+
+                  BasicBlock *succ = *I;
+                  if (succ) {
+
+                    count++;
+                    if (!first)
+                      first = succ;
+                    else
+                      second = succ;
+
+                  }
+
+                  fprintf(stderr, "succ %d %p\n", count, succ);
+
+                }
+
+                BasicBlock::iterator IP = BB.getFirstInsertionPt();
+                IRBuilder<>          IRB(&(*IP));
+                StoreInst *          Store;
+
+                if (count == 2 && (idMap[first] == 0 || idMap[second] == 0))
+                  count = 0;
+
+                Store = IRB.CreateStore(ConstantInt::get(Int32Ty, count),
+                                        savedSuccessors);
+                Store->setMetadata(M.getMDKindID("nosanitize"),
+                                   MDNode::get(C, None));
+
+                fprintf(stderr, "cmplog count %d\n", count);
+
+                if (count == 2)
+                  fprintf(stderr, "cmplog vals this[%p]%u [%p]%u [%p]%u\n", &BB,
+                          idMap[&BB], first, idMap[first], second,
+                          idMap[second]);
+
+                if (count == 2 && idMap[first] != 0 && idMap[second] != 0) {
+
+                  Store = IRB.CreateStore(
+                      ConstantInt::get(Int32Ty, idMap[first]), savedSuccessor1);
+                  Store->setMetadata(M.getMDKindID("nosanitize"),
+                                     MDNode::get(C, None));
+                  Store =
+                      IRB.CreateStore(ConstantInt::get(Int32Ty, idMap[second]),
+                                      savedSuccessor2);
+                  Store->setMetadata(M.getMDKindID("nosanitize"),
+                                     MDNode::get(C, None));
+
+                }
+
+                skip_block = 1;
+
+              }
+
+            }
+
+          }
+
+        }
+
+      }
 
     }
 

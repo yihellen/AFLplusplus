@@ -1101,8 +1101,13 @@ int main(int argc, char **argv, char **envp) {
   }
 
   cmplog_mode = getenv("AFL_CMPLOG") || getenv("AFL_LLVM_CMPLOG");
-  if (!be_quiet && cmplog_mode)
-    printf("CmpLog mode by <andreafioraldi@gmail.com>\n");
+
+  if (cmplog_mode) {
+
+    if (!be_quiet) printf("CmpLog mode by <andreafioraldi@gmail.com>\n");
+    if (lto_mode) instrument_mode = INSTRUMENT_AFL;
+
+  }
 
 #ifndef __ANDROID__
   find_obj(argv[0]);

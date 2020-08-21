@@ -234,10 +234,12 @@ class ModuleSanitizerCoverage {
   uint32_t                         autodictionary = 1;
   uint32_t                         inst = 0;
   uint32_t                         afl_global_id = 0;
+  uint32_t                         cmplog_mode = 0;
   uint64_t                         map_addr = 0;
   char *                           skip_nozero = NULL;
   std::vector<BasicBlock *>        BlockList;
   DenseMap<Value *, std::string *> valueMap;
+  DenseMap<BasicBlock *, uint32_t> idMap;
   std::vector<std::string>         dictionary;
   IntegerType *                    Int8Tyi = NULL;
   IntegerType *                    Int32Tyi = NULL;
@@ -247,6 +249,9 @@ class ModuleSanitizerCoverage {
   LLVMContext *                    Ct = NULL;
   Module *                         Mo = NULL;
   GlobalVariable *                 AFLMapPtr = NULL;
+  GlobalVariable *                 savedSuccessors = NULL;
+  GlobalVariable *                 savedSuccessor1 = NULL;
+  GlobalVariable *                 savedSuccessor2 = NULL;
   Value *                          MapPtrFixed = NULL;
   FILE *                           documentFile = NULL;
   // afl++ END
@@ -437,7 +442,39 @@ bool ModuleSanitizerCoverage::instrumentModule(
     if ((afl_global_id = atoi(ptr)) < 0)
       FATAL("AFL_LLVM_LTO_STARTID value of \"%s\" is negative\n", ptr);
 
-  if (getenv("AFL_LLVM_CMPLOG")) autodictionary = 0;
+  if (getenv("AFL_LLVM_CMPLOG")) {
+
+    autodictionary = 0;
+    cmplog_mode = 1;
+
+    fprintf(stderr, "cmplog mode\n");
+
+#ifdef __ANDROID__
+    savedSuccessors =
+        new GlobalVariable(M, Int32Tyi, false, GlobalValue::ExternalLinkage, 0,
+                           "__afl_successor_count");
+    savedSuccessor1 =
+        new GlobalVariable(M, Int32Tyi, false, GlobalValue::ExternalLinkage, 0,
+                           "__afl_successor_1");
+    savedSuccessor2 =
+        new GlobalVariable(M, Int32Tyi, false, GlobalValue::ExternalLinkage, 0,
+                           "__afl_successor_2");
+#else
+    savedSuccessors =
+        new GlobalVariable(M, Int32Tyi, false, GlobalValue::ExternalLinkage, 0,
+                           "__afl_successor_count", 0,
+                           GlobalVariable::GeneralDynamicTLSModel, 0, false);
+    savedSuccessor1 =
+        new GlobalVariable(M, Int32Tyi, false, GlobalValue::ExternalLinkage, 0,
+                           "__afl_successor_1", 0,
+                           GlobalVariable::GeneralDynamicTLSModel, 0, false);
+    savedSuccessor2 =
+        new GlobalVariable(M, Int32Tyi, false, GlobalValue::ExternalLinkage, 0,
+                           "__afl_successor_2", 0,
+                           GlobalVariable::GeneralDynamicTLSModel, 0, false);
+#endif
+
+  }
 
   if ((ptr = getenv("AFL_LLVM_DOCUMENT_IDS")) != NULL) {
 
@@ -1118,17 +1155,18 @@ void ModuleSanitizerCoverage::instrumentFunction(
   // afl++ START
   if (!F.size()) return;
   if (isIgnoreFunction(&F)) return;
+  idMap.shrink_and_clear();
   // afl++ END
 
   if (Options.CoverageType >= SanitizerCoverageOptions::SCK_Edge)
     SplitAllCriticalEdges(
         F, CriticalEdgeSplittingOptions().setIgnoreUnreachableDests());
+
   SmallVector<Instruction *, 8> IndirCalls;
   SmallVector<BasicBlock *, 16> BlocksToInstrument;
-
-  const DominatorTree *    DT = DTCallback(F);
-  const PostDominatorTree *PDT = PDTCallback(F);
-  bool                     IsLeafFunc = true;
+  const DominatorTree *         DT = DTCallback(F);
+  const PostDominatorTree *     PDT = PDTCallback(F);
+  bool                          IsLeafFunc = true;
 
   for (auto &BB : F) {
 
@@ -1149,6 +1187,91 @@ void ModuleSanitizerCoverage::instrumentFunction(
 
   InjectCoverage(F, BlocksToInstrument, IsLeafFunc);
   InjectCoverageForIndirectCalls(F, IndirCalls);
+
+  if (cmplog_mode && F.size() > 1) {
+
+    int skip_block;
+    for (auto &BB : F) {
+
+      skip_block = 0;
+      for (auto &IN : BB) {
+
+        if (skip_block < 2) {
+
+          CallInst *callInst = nullptr;
+
+          if ((callInst = dyn_cast<CallInst>(&IN))) {
+
+            Function *Callee = callInst->getCalledFunction();
+            if (!Callee) continue;
+            if (callInst->getCallingConv() != llvm::CallingConv::C) continue;
+            std::string FuncName = Callee->getName().str();
+            if (!FuncName.compare(0, 22, "__sanitizer_cov_trace_") ||
+                !FuncName.compare(0, 13, "__cmplog_ins_")) {
+
+              fprintf(stderr, "cmplog found!!\n");
+              int         count = 0;
+              BasicBlock *first = NULL, *second;
+
+              for (auto I = succ_begin(&BB), E = succ_end(&BB); I != E; ++I) {
+
+                BasicBlock *succ = *I;
+                if (succ) {
+
+                  count++;
+                  if (!first)
+                    first = succ;
+                  else
+                    second = succ;
+
+                }
+
+              }
+
+              BasicBlock::iterator IP = BB.getFirstInsertionPt();
+              IRBuilder<>          IRB(&(*IP));
+              StoreInst *          Store;
+
+              if (!skip_block) {
+
+                Store = IRB.CreateStore(savedSuccessors,
+                                        ConstantInt::get(Int32Tyi, count));
+                Store->setMetadata(Mo->getMDKindID("nosanitize"),
+                                   MDNode::get(*Ct, None));
+                skip_block = 1;
+
+              }
+
+              fprintf(stderr, "cmplog count %d\n", count);
+              if (count == 2)
+                fprintf(stderr, "cmplog vals this[%p]%u [%p]%u [%p]%u\n", &BB,
+                        idMap[&BB], first, idMap[first], second, idMap[second]);
+
+              if (count == 2 && idMap[first] != 0 && idMap[second] != 0) {
+
+                Store = IRB.CreateStore(
+                    savedSuccessor1, ConstantInt::get(Int32Tyi, idMap[first]));
+                Store->setMetadata(Mo->getMDKindID("nosanitize"),
+                                   MDNode::get(*Ct, None));
+                Store = IRB.CreateStore(
+                    savedSuccessor1, ConstantInt::get(Int32Tyi, idMap[second]));
+                Store->setMetadata(Mo->getMDKindID("nosanitize"),
+                                   MDNode::get(*Ct, None));
+                skip_block = 2;
+
+              }
+
+            }
+
+          }
+
+        }
+
+      }
+
+    }
+
+  }
 
 }
 
@@ -1331,6 +1454,8 @@ void ModuleSanitizerCoverage::InjectCoverageAtBlock(Function &F, BasicBlock &BB,
 
     // afl++ START
 
+    afl_global_id++;
+
     if (documentFile) {
 
       unsigned long long int moduleID =
@@ -1340,9 +1465,16 @@ void ModuleSanitizerCoverage::InjectCoverageAtBlock(Function &F, BasicBlock &BB,
 
     }
 
+    if (cmplog_mode) {
+
+      idMap[&BB] = afl_global_id;
+      fprintf(stderr, "[%p] <= %u\n", &BB, afl_global_id);
+
+    }
+
     /* Set the ID of the inserted basic block */
 
-    ConstantInt *CurLoc = ConstantInt::get(Int32Tyi, ++afl_global_id);
+    ConstantInt *CurLoc = ConstantInt::get(Int32Tyi, afl_global_id);
 
     /* Load SHM pointer */
 

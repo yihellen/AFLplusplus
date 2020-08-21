@@ -1,3 +1,47 @@
+# @andrea
+
+This is for `afl-fuzz-redqueen.c`:
+
+there is a new structure in the cmplog map:
+```
+struct cmp_map {
+ 
+  struct cmp_header   headers[CMP_MAP_W];
+  struct cmp_operands log[CMP_MAP_W][CMP_MAP_H];
++  struct cmp_successors successors;
+ 
+ };
+
++struct cmp_successors {
++
++  u32 count;
++  u32 first;
++  u32 second;
++
++}
++
+```
+
+if `count` equals `2` then `first` and `second` are filled with the edgeIDs
+of the following two basic blocks of this cmplog entry.
+
+This could be used to test if these IDs are set in trace_bits, virgin_bits
+or whatever to see if they have already been solved, or if they are solved
+in a current attempt.
+
+**NOTE:** needs the usage of afl-clang-lto.
+
+This could also be expanded to afl-clang-fast sancov/pcguard/tracepc mode but is more work.
+
+This could also be expanded to BBs with more than 2 successors.
+
+But the the initial test this should be fine.
+
+Hope you can use this.
+
+-marc
+
+
 # American Fuzzy Lop plus plus (afl++)
 
   <img align="right" src="https://raw.githubusercontent.com/andreafioraldi/AFLplusplus-website/master/static/logo_256x256.png" alt="AFL++ Logo">

@@ -66,12 +66,21 @@ struct cmpfn_operands {
 
 };
 
+struct cmp_successors {
+
+  u32 count;
+  u32 first;
+  u32 second;
+
+};
+
 typedef struct cmp_operands cmp_map_list[CMP_MAP_H];
 
 struct cmp_map {
 
-  struct cmp_header   headers[CMP_MAP_W];
-  struct cmp_operands log[CMP_MAP_W][CMP_MAP_H];
+  struct cmp_header     headers[CMP_MAP_W];
+  struct cmp_operands   log[CMP_MAP_W][CMP_MAP_H];
+  struct cmp_successors successors;
 
 };
 
