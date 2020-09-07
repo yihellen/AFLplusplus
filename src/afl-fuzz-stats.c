@@ -35,12 +35,12 @@ void write_setup_file(afl_state_t *afl, u32 argc, char **argv) {
   u8    fn[PATH_MAX];
   snprintf(fn, PATH_MAX, "%s/fuzzer_setup", afl->out_dir);
   FILE *f = create_ffile(fn);
-  u32 i;
+  u32   i;
 
   fprintf(f, "# environment variables:\n");
-  u32 s_afl_env = (u32)
-      sizeof(afl_environment_variables) / sizeof(afl_environment_variables[0]) -
-      1U;
+  u32 s_afl_env = (u32)sizeof(afl_environment_variables) /
+                      sizeof(afl_environment_variables[0]) -
+                  1U;
 
   for (i = 0; i < s_afl_env; ++i) {
 
@@ -75,6 +75,7 @@ void write_setup_file(afl_state_t *afl, u32 argc, char **argv) {
     }
 
   }
+
   fprintf(f, "\n");
 
   fclose(f);
@@ -1021,7 +1022,11 @@ void show_init_stats(afl_state_t *afl) {
 
   /* Let's keep things moving with slow binaries. */
 
-  if (avg_us > 50000) {
+  if (unlikely(afl->fixed_seed)) {
+
+    afl->havoc_div = 1;
+
+  } else if (avg_us > 50000) {
 
     afl->havoc_div = 10;                                /* 0-19 execs/sec   */
 
@@ -1091,7 +1096,11 @@ void show_init_stats(afl_state_t *afl) {
        random scheduler jitter is less likely to have any impact, and because
        our patience is wearing thin =) */
 
-    if (avg_us > 50000) {
+    if (unlikely(afl->fixed_seed)) {
+
+      afl->fsrv.exec_tmout = avg_us * 5 / 1000;
+
+    } else if (avg_us > 50000) {
 
       afl->fsrv.exec_tmout = avg_us * 2 / 1000;
 

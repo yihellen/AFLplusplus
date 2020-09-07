@@ -509,7 +509,7 @@ u32 calculate_score(afl_state_t *afl, struct queue_entry *q) {
   // Longer execution time means longer work on the input, the deeper in
   // coverage, the better the fuzzing, right? -mh
 
-  if (afl->schedule >= RARE && likely(!afl->fixed_seed)) {
+  if (afl->schedule < RARE && likely(!afl->fixed_seed)) {
 
     if (q->exec_us * 0.1 > avg_exec_us) {
 
