@@ -1203,7 +1203,6 @@ void ModuleSanitizerCoverage::InjectCoverageAtBlock(Function &F, BasicBlock &BB,
         auto cf = IRB.CreateICmpEQ(Incr, Zero);
         auto carry = IRB.CreateZExt(cf, Int8Ty);
         Incr = IRB.CreateAdd(Incr, carry);
-
       }
 
       IRB.CreateStore(Incr, MapPtrIdx);

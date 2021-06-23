@@ -25,8 +25,7 @@ RT_CFLAGS:=-Wno-unused-parameter \
 LDFLAGS+=-shared \
 		 -lpthread \
 		 -lresolv \
-		 -ldl \
-		 -z noexecstack \
+		 -ldl
 
 ifdef DEBUG
 CFLAGS+=-Werror \
@@ -60,6 +59,7 @@ else
 ifdef DEBUG
  RT_CFLAGS:=$(RT_CFLAGS) -Wno-prio-ctor-dtor
 endif
+LDFLAGS+=-z noexecstack
 endif
 
 ifeq "$(shell uname)" "Linux"
