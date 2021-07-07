@@ -446,7 +446,7 @@ u8 calibrate_case(afl_state_t *afl, struct queue_entry *q, u8 *use_mem,
 
     stop_us = get_cur_time_us();
     diff_us = stop_us - start_us;
-    if (unlikely(!diff_us)) { ++diff_us; }
+    if (unlikely(!diff_us)) { diff_us = 1; }
 
   }
 

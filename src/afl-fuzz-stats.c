@@ -762,10 +762,42 @@ void show_stats(afl_state_t *afl) {
   sprintf(tmp, "%s%s", u_stringify_int(IB(0), afl->unique_hangs),
           (afl->unique_hangs >= KEEP_UNIQUE_HANG) ? "+" : "");
 
-  u_stringify_time_diff(time_tmp, cur_ms, afl->last_hang_time);
-  SAYF(bV bSTOP "  last uniq hang : " cRST "%-33s " bSTG bV bSTOP
-                "   uniq hangs : " cRST "%-6s" bSTG         bV "\n",
-       time_tmp, tmp);
+  if (afl->schedule >= FAST && afl->schedule <= RARE) {
+
+    u64 is_one = 0;
+    for (u32 i = 0; i < N_FUZZ_SIZE; ++i) {
+
+      if (afl->n_fuzz_tmp[i] == 1) { ++is_one; }
+
+    }
+
+    if (is_one) {
+
+      u64 t2f = (afl->fsrv.total_execs *
+                 (afl->total_cal_us / afl->total_cal_cycles)) /
+                is_one;
+      u_stringify_time_diff(time_tmp, t2f * 1000, 1);
+      SAYF(bV bSTOP "    next find in : " cRST "%-33s " bSTG bV bSTOP
+                    "   uniq hangs : " cRST "%-6s" bSTG         bV "\n",
+           time_tmp, tmp);
+
+    } else {
+
+      u_stringify_time_diff(time_tmp, cur_ms, afl->last_hang_time);
+      SAYF(bV bSTOP "  last uniq hang : " cRST "%-33s " bSTG bV bSTOP
+                    "   uniq hangs : " cRST "%-6s" bSTG         bV "\n",
+           time_tmp, tmp);
+
+    }
+
+  } else {
+
+    u_stringify_time_diff(time_tmp, cur_ms, afl->last_hang_time);
+    SAYF(bV bSTOP "  last uniq hang : " cRST "%-33s " bSTG bV bSTOP
+                  "   uniq hangs : " cRST "%-6s" bSTG         bV "\n",
+         time_tmp, tmp);
+
+  }
 
   SAYF(bVR bH bSTOP                                              cCYA
        " cycle progress " bSTG bH10 bH5 bH2 bH2 bH2 bHB bH bSTOP cCYA

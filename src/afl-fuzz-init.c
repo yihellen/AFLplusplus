@@ -801,6 +801,7 @@ void read_testcases(afl_state_t *afl, u8 *directory) {
             u64 cksum = hash64(afl->fsrv.trace_bits, afl->fsrv.map_size,
          HASH_CONST); afl->queue_top->n_fuzz_entry = cksum % N_FUZZ_SIZE;
             afl->n_fuzz[afl->queue_top->n_fuzz_entry] = 1;
+            afl->n_fuzz_tmp[afl->queue_top->n_fuzz_entry] = 1;
 
           }
 

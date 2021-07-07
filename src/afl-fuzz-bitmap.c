@@ -476,8 +476,13 @@ save_if_interesting(afl_state_t *afl, void *mem, u32 len, u8 fault) {
     cksum = hash64(afl->fsrv.trace_bits, afl->fsrv.map_size, HASH_CONST);
 
     /* Saturated increment */
-    if (afl->n_fuzz[cksum % N_FUZZ_SIZE] < 0xFFFFFFFF)
-      afl->n_fuzz[cksum % N_FUZZ_SIZE]++;
+    if (afl->n_fuzz[cksum % N_FUZZ_SIZE] < 0xFFFFFFFF) {
+
+      u32 entry = cksum % N_FUZZ_SIZE;
+      afl->n_fuzz[entry]++;
+      afl->n_fuzz_tmp[entry]++;
+
+    }
 
   }
 
@@ -514,6 +519,12 @@ save_if_interesting(afl_state_t *afl, void *mem, u32 len, u8 fault) {
     ck_write(fd, mem, len, queue_fn);
     close(fd);
     add_to_queue(afl, queue_fn, len, 0);
+
+    if (afl->queued_paths % 10 == 0) {
+
+      memset(afl->n_fuzz_tmp, 0, N_FUZZ_SIZE * sizeof(u32));
+
+    }
 
 #ifdef INTROSPECTION
     if (afl->custom_mutators_count && afl->current_custom_fuzz) {
@@ -561,6 +572,7 @@ save_if_interesting(afl_state_t *afl, void *mem, u32 len, u8 fault) {
 
       afl->queue_top->n_fuzz_entry = cksum % N_FUZZ_SIZE;
       afl->n_fuzz[afl->queue_top->n_fuzz_entry] = 1;
+      afl->n_fuzz_tmp[afl->queue_top->n_fuzz_entry] = 1;
 
     }
 
