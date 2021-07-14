@@ -764,18 +764,16 @@ void show_stats(afl_state_t *afl) {
 
   if (afl->schedule >= FAST && afl->schedule <= RARE) {
 
-    u64 is_one = 0;
+    u64 singleton = 0;
     for (u32 i = 0; i < N_FUZZ_SIZE; ++i) {
 
-      if (afl->n_fuzz_tmp[i] == 1) { ++is_one; }
+      if (afl->n_fuzz_tmp[i] == 1) { ++singleton; }
 
     }
 
-    if (is_one) {
+    if (singleton) {
 
-      u64 t2f = (afl->fsrv.total_execs *
-                 (afl->total_cal_us / afl->total_cal_cycles)) /
-                is_one;
+      u64 t2f = (afl->fsrv.total_execs * afl->stats_avg_exec) / singleton;
       u_stringify_time_diff(time_tmp, t2f * 1000, 1);
       SAYF(bV bSTOP "    next find in : " cRST "%-33s " bSTG bV bSTOP
                     "   uniq hangs : " cRST "%-6s" bSTG         bV "\n",
