@@ -764,20 +764,22 @@ void show_stats(afl_state_t *afl) {
 
   if (afl->schedule >= FAST && afl->schedule <= RARE) {
 
-    u64 singleton = 0;
-    for (u32 i = 0; i < N_FUZZ_SIZE; ++i) {
+    u64 singletons = 0;
+    for (u32 i = 0; i < afl->queued_paths; i++) {
 
-      if (afl->n_fuzz_tmp[i] == 1) { ++singleton; }
+      if (afl->n_fuzz_tmp[afl->queue_buf[i]->n_fuzz_entry] == 1)
+        ++singletons;
 
     }
 
-    if (singleton) {
+    if (singletons) {
 
-      u64 t2f = (afl->fsrv.total_execs * afl->stats_avg_exec) / singleton;
+      double t2f = (afl->fsrv.total_execs / (double) singletons) / (double) afl->stats_avg_exec;
       u_stringify_time_diff(time_tmp, t2f * 1000, 1);
       SAYF(bV bSTOP "    next find in : " cRST "%-33s " bSTG bV bSTOP
                     "   uniq hangs : " cRST "%-6s" bSTG         bV "\n",
            time_tmp, tmp);
+
 
     } else {
 
