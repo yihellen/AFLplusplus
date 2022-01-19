@@ -54,9 +54,11 @@ static void at_exit() {
   if (ptr && *ptr) unlink(ptr);
 
   ptr = getenv("__AFL_TARGET_PID1");
+fprintf(stderr, "Normal target PID: %s\n", ptr ? ptr : "<empty>");
   if (ptr && *ptr && (pid1 = atoi(ptr)) > 0) kill(pid1, SIGTERM);
 
   ptr = getenv("__AFL_TARGET_PID2");
+fprintf(stderr, "Cmplog target PID: %s\n", ptr ? ptr : "<empty>");
   if (ptr && *ptr && (pid2 = atoi(ptr)) > 0) kill(pid2, SIGTERM);
 
   i = 0;
@@ -2044,6 +2046,9 @@ int main(int argc, char **argv_orig, char **envp) {
     OKF("Cmplog forkserver successfully started");
 
   }
+
+  fprintf(stderr, "Normal forkserver PID: %d\n", afl->fsrv.fsrv_pid);
+  fprintf(stderr, "Cmplog forkserver PID: %d\n", afl->cmplog_binary ? afl->cmplog_fsrv.fsrv_pid : -1);
 
   load_auto(afl);
 
