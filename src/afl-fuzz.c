@@ -88,7 +88,10 @@ fprintf(stderr, "Normal target PID: %s\n", ptr ? ptr : "<empty>");
   if ((ptr = getenv("AFL_KILL_SIGNAL"))) { kill_signal = atoi(ptr); }
 
   if (pid1 > 0) { kill(pid1, kill_signal); }
-  if (pid2 > 0) { kill(pid2, kill_signal); }
+  if (pid2 > 0) { if (kill(pid2, 0) == 0) fprintf(stderr, "CMPLOG PID STILL EXISTS!\n");
+  
+  
+  kill(pid2, kill_signal); }
 
 }
 
