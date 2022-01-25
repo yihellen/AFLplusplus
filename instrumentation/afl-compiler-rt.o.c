@@ -156,6 +156,7 @@ static void at_exit(int signal) {
 
   fprintf(stderr, "KILL child_pid: %d\n", child_pid);
   if (child_pid > 0) { kill(child_pid, SIGKILL); }
+  _exit(0);
 
 }
 
