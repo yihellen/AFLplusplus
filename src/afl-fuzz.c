@@ -52,7 +52,13 @@ static void at_exit() {
 
   ptr = getenv("__AFL_TARGET_PID2");
 fprintf(stderr, "Cmplog target PID: %s\n", ptr ? ptr : "<empty>");
-  if (ptr && *ptr && (pid2 = atoi(ptr)) > 0) kill(pid2, SIGTERM);
+  if (ptr && *ptr && (pid2 = atoi(ptr)) > 0) {
+    int pgrp = getpgid(pid2);
+fprintf(stderr, "Cmplog process group ID: %d\n", pgrp);
+    if (pgrp > 0)
+    killpg(pgrp, SIGTERM);
+    kill(pid2, SIGTERM);
+  }
 
   ptr = getenv("__AFL_TARGET_PID1");
 fprintf(stderr, "Normal target PID: %s\n", ptr ? ptr : "<empty>");
@@ -88,7 +94,12 @@ fprintf(stderr, "Normal target PID: %s\n", ptr ? ptr : "<empty>");
   if ((ptr = getenv("AFL_KILL_SIGNAL"))) { kill_signal = atoi(ptr); }
 
   if (pid1 > 0) { kill(pid1, kill_signal); }
-  if (pid2 > 0) { if (kill(pid2, 0) == 0) fprintf(stderr, "CMPLOG PID STILL EXISTS!\n");
+  if (pid2 > 0) { 
+    int pgrp = getpgid(pid2);
+    if (pgrp > 0)
+    killpg(pgrp, SIGKILL);
+  
+  if (kill(pid2, 0) == 0) fprintf(stderr, "CMPLOG PID STILL EXISTS!\n");
   
   
   kill(pid2, kill_signal); }
